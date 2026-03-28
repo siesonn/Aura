@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user preferences and basic information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "description": "User's email address." },
+        "photoURL": { "type": "string", "description": "URL to the user's profile picture." },
+        "skinType": { "type": "string", "description": "User's skin type (e.g., Oily, Dry)." },
+        "sensitivities": { "type": "string", "description": "Known skin sensitivities." },
+        "goals": { "type": "array", "items": { "type": "string" }, "description": "User's skincare goals." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "Routine": {
+      "title": "Skincare Routine",
+      "description": "A generated skincare routine for a user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who owns this routine." },
+        "am": { "type": "array", "items": { "type": "object" }, "description": "Morning routine steps." },
+        "pm": { "type": "array", "items": { "type": "object" }, "description": "Nighttime routine steps." },
+        "weeklySchedule": { "type": "array", "items": { "type": "object" }, "description": "Special weekly treatments." },
+        "notes": { "type": "array", "items": { "type": "string" }, "description": "General advice and warnings." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the routine was generated." },
+        "active": { "type": "boolean", "description": "Whether this is the currently active routine." }
+      },
+      "required": ["uid", "am", "pm", "createdAt"]
+    },
+    "Progress": {
+      "title": "Daily Progress",
+      "description": "Daily check-in and tracking data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who made this entry." },
+        "date": { "type": "string", "format": "date", "description": "The date of the entry." },
+        "completedAM": { "type": "boolean", "description": "Whether the AM routine was completed." },
+        "completedPM": { "type": "boolean", "description": "Whether the PM routine was completed." },
+        "mood": { "type": "string", "description": "How the user's skin feels today." },
+        "photoURL": { "type": "string", "description": "URL to a progress photo." },
+        "notes": { "type": "string", "description": "Any observations for the day." }
+      },
+      "required": ["uid", "date"]
+    },
+    "Product": {
+      "title": "Owned Product",
+      "description": "A product in the user's digital shelf.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who owns this product." },
+        "name": { "type": "string", "description": "Product name." },
+        "brand": { "type": "string", "description": "Product brand." },
+        "category": { "type": "string", "description": "Product category (e.g., Cleanser)." },
+        "ingredients": { "type": "string", "description": "List of ingredients." },
+        "expiryDate": { "type": "string", "format": "date", "description": "Product expiration date." }
+      },
+      "required": ["uid", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/routines/{routineId}": {
+      "schema": "Routine",
+      "description": "Generated routines."
+    },
+    "/progress/{progressId}": {
+      "schema": "Progress",
+      "description": "Daily progress entries."
+    },
+    "/inventory/{productId}": {
+      "schema": "Product",
+      "description": "User's product shelf."
+    }
+  }
+}

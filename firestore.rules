@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isRequestOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "siesonn@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Data Validation
+    // ===============================================================
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() > 0 &&
+             data.email is string && data.email.size() > 0;
+    }
+
+    function isValidRoutine(data) {
+      return data.uid is string && data.uid.size() > 0 &&
+             data.am is list && data.pm is list &&
+             data.createdAt is string;
+    }
+
+    function isValidProgress(data) {
+      return data.uid is string && data.uid.size() > 0 &&
+             data.date is string;
+    }
+
+    function isValidProduct(data) {
+      return data.uid is string && data.uid.size() > 0 &&
+             data.name is string && data.name.size() > 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    // User Profiles
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+    
+    // Routines
+    match /routines/{routineId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidRoutine(request.resource.data);
+      allow update: if isDocOwner() && isValidRoutine(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+    
+    // Progress Tracking
+    match /progress/{progressId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidProgress(request.resource.data);
+      allow update: if isDocOwner() && isValidProgress(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+    
+    // Product Shelf
+    match /inventory/{productId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidProduct(request.resource.data);
+      allow update: if isDocOwner() && isValidProduct(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}
