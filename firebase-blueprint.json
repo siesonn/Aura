@@ -59,6 +59,31 @@
         "expiryDate": { "type": "string", "format": "date", "description": "Product expiration date." }
       },
       "required": ["uid", "name"]
+    },
+    "DiaryEntry": {
+      "title": "Skin Diary Entry",
+      "description": "A text entry in the user's skin diary.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who made this entry." },
+        "entry": { "type": "string", "description": "The text content of the entry." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the entry was created." }
+      },
+      "required": ["uid", "entry", "createdAt"]
+    },
+    "Review": {
+      "title": "App Review",
+      "description": "A user review of the Aura app.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user who wrote the review." },
+        "displayName": { "type": "string", "description": "Display name of the reviewer." },
+        "photoURL": { "type": "string", "description": "Avatar of the reviewer." },
+        "rating": { "type": "integer", "description": "Rating from 1 to 5." },
+        "comment": { "type": "string", "description": "Review text." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the review was posted." }
+      },
+      "required": ["uid", "rating", "comment", "createdAt"]
     }
   },
   "firestore": {
@@ -77,6 +102,14 @@
     "/inventory/{productId}": {
       "schema": "Product",
       "description": "User's product shelf."
+    },
+    "/diary/{entryId}": {
+      "schema": "DiaryEntry",
+      "description": "User's skin diary entries."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Public app reviews."
     }
   }
 }

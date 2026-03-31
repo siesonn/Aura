@@ -405,6 +405,80 @@ const ProductModal = ({ isOpen, onClose, onAdd, toggleListen, isListening, activ
   );
 };
 
+const ReviewModal = ({ 
+  isOpen, 
+  onClose, 
+  onAdd,
+  isSubmitting
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onAdd: (data: { rating: number; comment: string }) => void;
+  isSubmitting: boolean;
+}) => {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+    onAdd({ rating, comment });
+    setComment('');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="p-6 flex items-center justify-between border-b border-[#E5E0DB] dark:border-[#333333]">
+          <h3 className="text-xl font-serif">Share Your Experience</h3>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-[#F4F1ED] dark:hover:bg-[#2A2A2A] transition-all">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-[#8C857B] mb-3">Rating</label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="p-1 transition-transform hover:scale-110"
+                >
+                  <Star 
+                    className={`w-8 h-8 ${star <= rating ? 'fill-[#1C1A17] dark:fill-[#FAFAFA] text-[#1C1A17] dark:text-[#FAFAFA]' : 'text-[#E5E0DB] dark:text-[#333333]'}`} 
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-[#8C857B] mb-2">Your Thoughts</label>
+            <textarea 
+              autoFocus
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="How has Aura helped your skin journey?"
+              className="w-full px-5 py-4 rounded-2xl border border-[#E5E0DB] dark:border-[#333333] bg-transparent focus:border-[#1C1A17] dark:focus:border-[#FAFAFA] transition-all outline-none min-h-[120px]"
+              required
+            />
+          </div>
+          <button 
+            type="submit"
+            disabled={isSubmitting || !comment.trim()}
+            className="w-full py-4 rounded-full bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] font-medium shadow-lg active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Post Review'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const SkinDiaryModal = ({ isOpen, onClose, onAdd, toggleListen, isListening, activeInput }: { 
   isOpen: boolean, 
   onClose: () => void, 
@@ -470,7 +544,7 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [view, setView] = useState<'generator' | 'dashboard' | 'shelf' | 'progress'>('generator');
+  const [view, setView] = useState<'landing' | 'generator' | 'dashboard' | 'shelf' | 'progress'>('landing');
   const [savedRoutines, setSavedRoutines] = useState<any[]>([]);
   const [progressEntries, setProgressEntries] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
@@ -502,9 +576,13 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
+      // If user logs in and is on landing, move to dashboard
+      if (currentUser && view === 'landing') {
+        setView('dashboard');
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [view]);
 
   useEffect(() => {
     if (!user) {
@@ -590,6 +668,31 @@ export default function App() {
     }
   };
 
+  const resetQuiz = () => {
+    setStep(1);
+    setAnswers({
+      skinType: '',
+      age: '',
+      sensitivities: '',
+      sensitiveTo: '',
+      dermatologist: '',
+      productType: '',
+      goals: [] as string[],
+      currentProducts: [] as string[],
+      reactions: [] as string[],
+      budget: '',
+      commitment: '',
+      amProducts: '3',
+      pmProducts: '3',
+      advanced: '',
+      rotate: '',
+      routineTime: '',
+      fragranceFree: '',
+      gentleOrActive: '',
+    });
+    setRoutine(null);
+  };
+
   const saveCurrentRoutine = async (routineData: any) => {
     if (!user) return;
     try {
@@ -599,6 +702,7 @@ export default function App() {
         createdAt: new Date().toISOString(),
         active: true
       });
+      setView('dashboard');
     } catch (error) {
       console.error("Failed to save routine", error);
     }
@@ -659,8 +763,41 @@ export default function App() {
         entry,
         createdAt: new Date().toISOString()
       });
+      setIsDiaryModalOpen(false);
     } catch (error) {
       console.error("Failed to add to diary", error);
+    }
+  };
+
+  useEffect(() => {
+    if (view === 'landing') {
+      const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(10));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'reviews');
+      });
+      return () => unsubscribe();
+    }
+  }, [view]);
+
+  const addReview = async (reviewData: { rating: number; comment: string }) => {
+    if (!user) return;
+    setIsSubmittingReview(true);
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        uid: user.uid,
+        displayName: user.displayName || 'Anonymous',
+        photoURL: user.photoURL || '',
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        createdAt: new Date().toISOString()
+      });
+      setIsReviewModalOpen(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'reviews');
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -720,6 +857,9 @@ export default function App() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isDiaryModalOpen, setIsDiaryModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -960,7 +1100,12 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] font-sans text-[#1C1A17] dark:text-[#FAFAFA] selection:bg-[#B6D3D9] selection:text-[#1C1A17] print:bg-white relative overflow-hidden transition-colors duration-500">
+      {isAuthLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-[#FAFAF9] dark:bg-[#121212]">
+          <Loader2 className="w-10 h-10 animate-spin text-[#1C1A17] dark:text-[#FAFAFA]" />
+        </div>
+      ) : (
+        <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] font-sans text-[#1C1A17] dark:text-[#FAFAFA] selection:bg-[#B6D3D9] selection:text-[#1C1A17] print:bg-white relative overflow-hidden transition-colors duration-500">
         
         {/* Decorative Background */}
         <div className="fixed top-20 left-10 opacity-20 pointer-events-none hidden md:block">
@@ -1018,8 +1163,33 @@ export default function App() {
           )}
         </nav>
 
-        {/* Dark Mode Toggle */}
-        <div className="absolute top-4 right-4 md:top-8 md:right-8 z-50 print:hidden">
+        {/* Header Actions */}
+        <div className="absolute top-4 right-4 md:top-8 md:right-8 z-50 print:hidden flex items-center gap-3">
+          {!user && !isAuthLoading && (
+            <button 
+              onClick={handleLogin}
+              className="px-5 py-2.5 rounded-full bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] text-sm font-medium shadow-sm hover:opacity-90 transition-all active:scale-95"
+            >
+              Sign In
+            </button>
+          )}
+          {user && (
+            <button 
+              onClick={() => setView('dashboard')}
+              className="flex items-center gap-2 p-1 pr-4 rounded-full border border-[#E5E0DB] dark:border-[#333333] bg-white dark:bg-[#1E1E1E] hover:border-[#1C1A17] dark:hover:border-[#FAFAFA] transition-all group"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E5E0DB] dark:border-[#333333]">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName || 'User'} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#F4D5C9] flex items-center justify-center text-[#1C1A17] text-xs font-bold">
+                    {user.displayName?.charAt(0) || 'U'}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-medium text-[#1C1A17] dark:text-[#FAFAFA]">{user.displayName?.split(' ')[0]}</span>
+            </button>
+          )}
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="p-3 rounded-full border border-[#E5E0DB] dark:border-[#333333] text-[#5C554F] dark:text-[#A3A3A3] hover:text-[#1C1A17] dark:hover:text-[#FAFAFA] hover:bg-white dark:hover:bg-[#1E1E1E] transition-all bg-[#FAFAFA] dark:bg-[#121212] shadow-sm"
@@ -1040,16 +1210,142 @@ export default function App() {
         </header>
 
         <main className="max-w-4xl mx-auto px-6 pb-32 relative z-10">
-          {view === 'dashboard' && user && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-4xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] tracking-tight">Welcome back, {user.displayName?.split(' ')[0]}</h2>
-                {notifications.length > 0 && (
-                  <div className="relative">
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-[#121212]"></div>
-                    <AlertCircle className="w-6 h-6 text-[#5C554F] dark:text-[#A3A3A3]" />
+          {view === 'landing' && (
+            <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 py-12">
+              <div className="text-center mb-16">
+                <h2 className="text-5xl md:text-7xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] mb-6 tracking-tighter leading-tight">
+                  Your Skin's <br /> <span className="italic text-[#8C857B]">Digital Twin.</span>
+                </h2>
+                <p className="text-xl text-[#5C554F] dark:text-[#A3A3A3] font-light max-w-xl mx-auto leading-relaxed mb-10">
+                  Aura uses advanced AI to decode your skin's unique needs and craft a routine that evolves with you.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <button 
+                    onClick={() => setView('generator')}
+                    className="w-full sm:w-auto px-10 py-5 bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] rounded-full font-medium text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    Start Your Quiz
+                  </button>
+                  {!user && (
+                    <button 
+                      onClick={handleLogin}
+                      className="w-full sm:w-auto px-10 py-5 bg-white dark:bg-[#1E1E1E] text-[#1C1A17] dark:text-[#FAFAFA] border border-[#E5E0DB] dark:border-[#333333] rounded-full font-medium text-lg hover:border-[#1C1A17] dark:hover:border-[#FAFAFA] transition-all"
+                    >
+                      Sign In to Save
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+                {[
+                  { icon: Sparkles, title: "AI Analysis", desc: "Scan your skin or analyze ingredients with Gemini 1.5 Pro.", color: "bg-[#F4D5C9]" },
+                  { icon: CalendarDays, title: "Smart Tracking", desc: "Log your morning and night routines to see real progress.", color: "bg-[#D4E0D9]" },
+                  { icon: ShoppingBag, title: "Digital Shelf", desc: "Keep track of your products and their expiration dates.", color: "bg-[#B6D3D9]" }
+                ].map((feature, i) => (
+                  <div key={i} className="p-8 bg-white dark:bg-[#1E1E1E] rounded-[2rem] border border-[#E5E0DB] dark:border-[#333333] shadow-sm hover:shadow-md transition-all group">
+                    <div className={`w-12 h-12 ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                      <feature.icon className="w-6 h-6 text-[#1C1A17]" />
+                    </div>
+                    <h3 className="text-xl font-serif mb-3">{feature.title}</h3>
+                    <p className="text-sm text-[#5C554F] dark:text-[#A3A3A3] leading-relaxed font-light">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-[#1C1A17] dark:bg-[#FAFAFA] rounded-[3rem] p-10 md:p-16 text-center text-white dark:text-[#1C1A17] relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                  <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white dark:bg-black rounded-full blur-[100px]"></div>
+                  <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-white dark:bg-black rounded-full blur-[100px]"></div>
+                </div>
+                <h3 className="text-3xl md:text-4xl font-serif mb-6 relative z-10">Ready to glow?</h3>
+                <p className="text-lg opacity-80 mb-10 max-w-lg mx-auto font-light relative z-10">Join thousands of others who have simplified their skincare with Aura.</p>
+                <button 
+                  onClick={() => setView('generator')}
+                  className="bg-white text-[#1C1A17] dark:bg-[#1C1A17] dark:text-white px-12 py-5 rounded-full font-bold uppercase tracking-widest text-sm hover:scale-105 transition-all relative z-10"
+                >
+                  Get Started Now
+                </button>
+              </div>
+
+              {/* Reviews Section */}
+              <div className="py-20">
+                <div className="flex items-center justify-between mb-12">
+                  <h3 className="text-3xl font-serif">Community Love</h3>
+                  {user && (
+                    <button 
+                      onClick={() => setIsReviewModalOpen(true)}
+                      className="px-6 py-3 rounded-full bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] text-sm font-medium hover:opacity-90 transition-all"
+                    >
+                      Write a Review
+                    </button>
+                  )}
+                </div>
+                
+                {reviews.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="p-8 bg-white dark:bg-[#1E1E1E] rounded-[2rem] border border-[#E5E0DB] dark:border-[#333333] shadow-sm">
+                        <div className="flex items-center gap-4 mb-6">
+                          <div className="w-12 h-12 rounded-full overflow-hidden bg-[#F4D5C9] flex-shrink-0">
+                            {review.photoURL ? (
+                              <img src={review.photoURL} alt={review.displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[#1C1A17] font-serif">
+                                {review.displayName?.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-[#1C1A17] dark:text-[#FAFAFA]">{review.displayName}</h4>
+                            <div className="flex gap-0.5 mt-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-[#1C1A17] dark:fill-[#FAFAFA] text-[#1C1A17] dark:text-[#FAFAFA]' : 'text-[#E5E0DB] dark:text-[#333333]'}`} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[#5C554F] dark:text-[#A3A3A3] font-light leading-relaxed italic">"{review.comment}"</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-[#F5F2ED] dark:bg-[#1A1A1A] rounded-[2rem] border border-dashed border-[#E5E0DB] dark:border-[#333333]">
+                    <p className="text-[#8C857B] font-light">No reviews yet. Be the first to share your glow!</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {view === 'dashboard' && user && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div className="flex items-center gap-6">
+                  <div className="w-24 h-24 rounded-[2rem] overflow-hidden border-4 border-white dark:border-[#1E1E1E] shadow-xl">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt={user.displayName || 'User'} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#F4D5C9] flex items-center justify-center text-[#1C1A17] text-3xl font-serif">
+                        {user.displayName?.charAt(0) || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] tracking-tight mb-1">
+                      {user.displayName?.split(' ')[0]}'s Aura
+                    </h2>
+                    <p className="text-[#8C857B] text-sm font-light">{user.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleLogout}
+                    className="px-6 py-3 rounded-full border border-[#E5E0DB] dark:border-[#333333] text-sm font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
+                </div>
               </div>
 
               {notifications.length > 0 && (
@@ -1808,7 +2104,7 @@ export default function App() {
                   </div>
 
                   <div className="mt-12 text-center print:hidden">
-                    <button onClick={() => setStep(1)} className="text-[#1C1A17] dark:text-[#FAFAFA] font-medium underline underline-offset-8">Start Over</button>
+                    <button onClick={resetQuiz} className="text-[#1C1A17] dark:text-[#FAFAFA] font-medium underline underline-offset-8">Start Over</button>
                   </div>
                 </>
               )}
@@ -1838,7 +2134,14 @@ export default function App() {
       isListening={isListening}
       activeInput={activeInput}
     />
-  </div>
-  </ErrorBoundary>
-);
+    <ReviewModal
+      isOpen={isReviewModalOpen}
+      onClose={() => setIsReviewModalOpen(false)}
+      onAdd={addReview}
+      isSubmitting={isSubmittingReview}
+    />
+    </div>
+    )}
+    </ErrorBoundary>
+  );
 }
