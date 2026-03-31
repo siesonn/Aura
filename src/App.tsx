@@ -1961,6 +1961,30 @@ export default function App() {
                   </div>
 
                   <div id="routine-print-area" className={`p-8 sm:p-12 bg-inherit w-full max-w-[800px] mx-auto ${isGeneratingPDF ? 'overflow-visible' : ''}`}>
+                    {/* Analysis Section */}
+                    {routine.analysis && (
+                      <div className="bg-[#F4F1ED] dark:bg-[#2A2A2A] rounded-3xl p-8 mb-8 border border-[#E5E0DB] dark:border-[#333333]">
+                        <div className="flex items-center mb-6">
+                          <Sparkles className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                          <h3 className="text-2xl font-serif">Expert Analysis</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Working Well</h4>
+                            <p className="text-sm font-light leading-relaxed">{routine.analysis.workingWell}</p>
+                          </div>
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Needs Attention</h4>
+                            <p className="text-sm font-light leading-relaxed">{routine.analysis.issuesToWatch}</p>
+                          </div>
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Missing Pieces</h4>
+                            <p className="text-sm font-light leading-relaxed">{routine.analysis.missingElements}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* AM Routine */}
                     <div className={`bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-sm ${isGeneratingPDF ? 'overflow-visible' : 'overflow-hidden'} mb-8 border border-[#E5E0DB] dark:border-[#333333]`}>
                       <div className="px-8 py-6 flex items-center border-b border-[#E5E0DB] dark:border-[#333333]">
@@ -1979,7 +2003,7 @@ export default function App() {
                             </div>
                             <div>
                               <h4 className="text-lg font-medium mb-1">{item.name}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light">{item.desc}</p>
+                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
                             </div>
                           </div>
                         ))}
@@ -2004,7 +2028,7 @@ export default function App() {
                             </div>
                             <div>
                               <h4 className="text-lg font-medium mb-1">{item.name}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light">{item.desc}</p>
+                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
                             </div>
                           </div>
                         ))}
@@ -2020,10 +2044,10 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           {routine.weeklySchedule.map((schedule: any, idx: number) => (
-                            <div key={idx} className="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 border border-[#E5E0DB] dark:border-[#333333]">
-                              <span className="text-xs font-bold uppercase tracking-widest bg-[#F4F1ED] dark:bg-[#2A2A2A] px-3 py-1 rounded-full">{schedule.day}</span>
-                              <h4 className="font-medium mt-4 mb-2">{schedule.focus}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light">{schedule.details}</p>
+                            <div key={idx} className="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 border border-[#E5E0DB] dark:border-[#333333] flex flex-col h-full">
+                              <span className="text-[10px] font-bold uppercase tracking-widest bg-[#F4F1ED] dark:bg-[#2A2A2A] px-3 py-1 rounded-full w-fit mb-4">{schedule.day}</span>
+                              <h4 className="font-medium mb-2 text-base">{schedule.focus}</h4>
+                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed flex-grow">{schedule.details}</p>
                             </div>
                           ))}
                         </div>

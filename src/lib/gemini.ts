@@ -5,14 +5,23 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 export const routineSchema = {
   type: Type.OBJECT,
   properties: {
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        workingWell: { type: Type.STRING, description: "What in their current routine is effective." },
+        issuesToWatch: { type: Type.STRING, description: "Potential issues or ineffective products in their current routine." },
+        missingElements: { type: Type.STRING, description: "What is missing from their routine to reach their goals." }
+      },
+      required: ["workingWell", "issuesToWatch", "missingElements"]
+    },
     am: {
       type: Type.ARRAY,
       items: {
         type: Type.OBJECT,
         properties: {
           step: { type: Type.NUMBER },
-          name: { type: Type.STRING },
-          desc: { type: Type.STRING }
+          name: { type: Type.STRING, description: "Product category and key ingredient (e.g., 'Gentle Ceramide Cleanser')" },
+          desc: { type: Type.STRING, description: "Short, simple explanation of why this is included and what it does." }
         },
         required: ["step", "name", "desc"]
       }
@@ -23,8 +32,8 @@ export const routineSchema = {
         type: Type.OBJECT,
         properties: {
           step: { type: Type.NUMBER },
-          name: { type: Type.STRING },
-          desc: { type: Type.STRING }
+          name: { type: Type.STRING, description: "Product category and key ingredient (e.g., 'Retinoid Serum')" },
+          desc: { type: Type.STRING, description: "Short, simple explanation of why this is included and what it does." }
         },
         required: ["step", "name", "desc"]
       }
@@ -36,7 +45,7 @@ export const routineSchema = {
         properties: {
           day: { type: Type.STRING },
           focus: { type: Type.STRING },
-          details: { type: Type.STRING }
+          details: { type: Type.STRING, description: "Explicit instructions, naming specific ingredient types to use (e.g., 'Apply your Salicylic Acid serum')." }
         },
         required: ["day", "focus", "details"]
       }
@@ -46,13 +55,13 @@ export const routineSchema = {
       items: { type: Type.STRING }
     }
   },
-  required: ["am", "pm", "weeklySchedule", "notes"]
+  required: ["analysis", "am", "pm", "weeklySchedule", "notes"]
 };
 
 export const generateSkincareRoutine = async (answers: any) => {
   const prompt = `
     Act as an expert skincare advisor and formulator. 
-    Create a personalized skincare routine based on these user preferences:
+    Create a highly personalized and educational skincare routine based on these user preferences:
     - Skin Type: ${answers.skinType}
     - Goals: ${answers.goals.join(", ")}
     - Sensitivities: ${answers.sensitivities}
@@ -65,11 +74,25 @@ export const generateSkincareRoutine = async (answers: any) => {
     - Past Reactions: ${answers.reactions.join(", ")}
     - Seeing a Dermatologist: ${answers.dermatologist}
     
-    Do NOT recommend specific brands, only product categories (e.g., 'Ceramide Moisturizer', 'Vitamin C Serum').
-    If the user is a beginner, keep it simple.
+    YOUR GOAL: Provide a guided, educational experience for the user.
+    
+    1. PERSONALIZED ANALYSIS:
+       - Identify what they are currently using that is working well.
+       - Call out anything in their current routine that may not be effective or may be causing issues (e.g., conflicting actives, lack of hydration).
+       - Identify what is missing from their routine based on their goals and skin type.
+    
+    2. SPECIFIC RECOMMENDATIONS:
+       - Recommend specific PRODUCT CATEGORIES and INGREDIENT TYPES (not brands).
+       - Examples: 'Hyaluronic Acid Serum', 'Niacinamide Serum', 'Retinoid', 'Salicylic Acid (BHA)', 'Ceramide Moisturizer', 'Mineral SPF'.
+       - When referencing something like "active serum," EXPLICITLY define what that means for this specific user (e.g., "Active Serum (Retinol)").
+    
+    3. EDUCATIONAL GUIDANCE:
+       - Name the actual product types or ingredients in each step.
+       - Include short, simple explanations for each recommendation so a beginner understands WHY it is included.
+    
     ${answers.sensitiveTo ? `CRITICAL RULE: ABSOLUTELY DO NOT recommend any product categories or ingredients that overlap with their sensitivities (${answers.sensitiveTo}).` : ''}
     
-    Provide a 7-day schedule breakdown for the "weeklySchedule". If they rotate products (Skin Cycling), map out their actives and recovery nights (Monday to Sunday). If they don't rotate, keep the focus consistent across the 7 days.
+    Provide a 7-day schedule breakdown for the "weeklySchedule". Map out their actives and recovery nights (Monday to Sunday). Be explicit about which ingredient to use each night.
   `;
 
   const response = await ai.models.generateContent({
