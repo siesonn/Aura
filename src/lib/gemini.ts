@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -96,13 +96,12 @@ export const generateSkincareRoutine = async (answers: any) => {
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [{ parts: [{ text: prompt }] }],
     config: {
       responseMimeType: "application/json",
       responseSchema: routineSchema,
-      systemInstruction: "You are a warm, reassuring, and expert skincare advisor.",
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      systemInstruction: "You are a warm, reassuring, and expert skincare advisor."
     }
   });
 
@@ -119,7 +118,7 @@ export const askSkincareAI = async (question: string, answers: any, routine: any
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [{ parts: [{ text: prompt }] }],
     config: {
       systemInstruction: "You are a helpful, warm expert esthetician."
@@ -145,43 +144,10 @@ export const analyzeProductIngredients = async (ingredients: string, answers: an
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [{ parts: [{ text: prompt }] }],
     config: {
       systemInstruction: "You are a helpful, warm expert esthetician and cosmetic chemist."
-    }
-  });
-
-  return response.text;
-};
-
-export const analyzeSkinPhoto = async (base64Image: string) => {
-  const prompt = `
-    Act as a professional esthetician and skin analysis expert. 
-    Analyze the provided skin photo (close-up of face) and identify:
-    1. Primary Skin Type (Oily, Dry, Combination, Normal, Sensitive)
-    2. Main Concerns (e.g., Acne, Hyperpigmentation, Redness, Fine Lines, Texture)
-    3. Suggested Focus Areas for a skincare routine.
-    
-    Provide a warm, reassuring, and expert summary. 
-    Disclaimer: Remind the user that this is an AI analysis and not a medical diagnosis.
-  `;
-
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image",
-    contents: {
-      parts: [
-        { text: prompt },
-        {
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: base64Image.split(',')[1] // Remove data:image/jpeg;base64,
-          }
-        }
-      ]
-    },
-    config: {
-      systemInstruction: "You are a warm, reassuring, and expert skincare advisor."
     }
   });
 

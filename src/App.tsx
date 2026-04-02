@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, Component } from 'react';
+import { flushSync } from 'react-dom';
 import { 
   Sparkles, Droplets, Sun, Moon, AlertCircle, 
   ChevronRight, ChevronLeft, CheckCircle2, Heart, 
   Flower2, MessageCircle, Search, Mic,
-  Printer, CalendarDays, Star, Loader2,
+  Printer, CalendarDays, Star, Loader2, Wand2,
   User as UserIcon, LogOut, LayoutDashboard,
   Plus, Trash2, Camera, Check, X,
   History, ShoppingBag, Settings, Info
@@ -15,7 +16,7 @@ import {
   FRAGRANCE_OPTS, TIME_OPTS, SENSITIVITY_OPTS, DERM_OPTS 
 } from './constants';
 import { 
-  generateSkincareRoutine, askSkincareAI, analyzeProductIngredients, analyzeSkinPhoto 
+  generateSkincareRoutine, askSkincareAI, analyzeProductIngredients 
 } from './lib/gemini';
 import { auth, db, googleProvider } from './firebase';
 import { 
@@ -223,95 +224,6 @@ const SpeechToTextButton = ({
     <Mic className="w-5 h-5 stroke-[1.5]" />
   </button>
 );
-
-const CameraModal = ({ isOpen, onClose, onCapture }: { isOpen: boolean, onClose: () => void, onCapture: (base64: string) => void }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [isOpen]);
-
-  const startCamera = async () => {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      setStream(s);
-      if (videoRef.current) videoRef.current.srcObject = s;
-    } catch (err) {
-      console.error("Camera access error:", err);
-      setError("Could not access camera. Please check permissions.");
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-  };
-
-  const capture = () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
-      if (context) {
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
-        context.drawImage(videoRef.current, 0, 0);
-        const base64 = canvasRef.current.toDataURL('image/jpeg');
-        onCapture(base64);
-        onClose();
-      }
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="p-6 flex items-center justify-between border-b border-[#E5E0DB] dark:border-[#333333]">
-          <h3 className="text-xl font-serif">Live Skin Scan</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-[#F4F1ED] dark:hover:bg-[#2A2A2A] transition-all">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="relative aspect-square bg-black">
-          {error ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-              <p className="text-white text-sm">{error}</p>
-            </div>
-          ) : (
-            <>
-              <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
-              <div className="absolute inset-0 border-2 border-white/30 rounded-full m-12 pointer-events-none"></div>
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-full h-px bg-white/20 animate-[scan_2s_ease-in-out_infinite]"></div>
-              </div>
-            </>
-          )}
-        </div>
-        <div className="p-8 flex justify-center">
-          <button 
-            onClick={capture}
-            disabled={!!error}
-            className="w-16 h-16 rounded-full bg-[#1C1A17] dark:bg-[#FAFAFA] flex items-center justify-center text-white dark:text-[#1C1A17] shadow-lg active:scale-90 transition-all disabled:opacity-50"
-          >
-            <div className="w-12 h-12 rounded-full border-2 border-white/20 dark:border-black/20"></div>
-          </button>
-        </div>
-        <canvas ref={canvasRef} className="hidden" />
-      </div>
-    </div>
-  );
-};
 
 const ProductModal = ({ isOpen, onClose, onAdd, toggleListen, isListening, activeInput }: { 
   isOpen: boolean, 
@@ -538,17 +450,89 @@ const SkinDiaryModal = ({ isOpen, onClose, onAdd, toggleListen, isListening, act
   );
 };
 
+const SkincareTools = ({ 
+  analyzeInput, 
+  setAnalyzeInput, 
+  handleAnalyzeProduct, 
+  isAnalyzing, 
+  analyzeResult,
+  aiQuestion,
+  setAiQuestion,
+  handleAskAI,
+  isAsking,
+  aiAnswer,
+  toggleListen,
+  isListening,
+  activeInput
+}: any) => (
+  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    {/* Analyzer */}
+    <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 border border-[#E5E0DB] dark:border-[#333333]">
+      <div className="flex items-center mb-4">
+        <Search className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+        <h3 className="text-2xl font-serif">Ingredient Analyzer</h3>
+      </div>
+      <div className="relative">
+        <textarea
+          value={analyzeInput}
+          onChange={(e) => setAnalyzeInput(e.target.value)}
+          placeholder="Paste ingredients here..."
+          className="w-full px-5 py-4 pr-14 rounded-2xl border border-[#E5E0DB] dark:border-[#333333] min-h-[120px] bg-transparent"
+        />
+        <div className="absolute right-3 bottom-3">
+          <SpeechToTextButton 
+            isActive={isListening && activeInput === 'analyzer'}
+            onClick={() => toggleListen(setAnalyzeInput, 'analyzer', analyzeInput)}
+          />
+        </div>
+        <button onClick={handleAnalyzeProduct} disabled={isAnalyzing || !analyzeInput.trim()} className="mt-4 bg-[#1C1A17] text-white px-8 py-3 rounded-full font-medium ml-auto block">
+          {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Analyze ✨'}
+        </button>
+      </div>
+      {analyzeResult && <div className="mt-6 p-6 bg-[#FAFAFA] dark:bg-[#121212] rounded-2xl text-sm font-light">{analyzeResult}</div>}
+    </div>
+
+    {/* Q&A */}
+    <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 border border-[#E5E0DB] dark:border-[#333333]">
+      <div className="flex items-center mb-4">
+        <MessageCircle className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+        <h3 className="text-2xl font-serif">Ask AI</h3>
+      </div>
+      <div className="flex gap-4 relative">
+        <input
+          type="text"
+          value={aiQuestion}
+          onChange={(e) => setAiQuestion(e.target.value)}
+          placeholder="Ask a question..."
+          className="flex-1 px-5 py-4 pr-14 rounded-2xl border border-[#E5E0DB] dark:border-[#333333] bg-transparent"
+        />
+        <div className="absolute right-[140px] top-1/2 -translate-y-1/2">
+          <SpeechToTextButton 
+            isActive={isListening && activeInput === 'aiQuestion'}
+            onClick={() => toggleListen(setAiQuestion, 'aiQuestion', aiQuestion)}
+          />
+        </div>
+        <button onClick={handleAskAI} disabled={isAsking || !aiQuestion.trim()} className="bg-[#1C1A17] text-white px-8 py-4 rounded-full font-medium">
+          {isAsking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ask ✨'}
+        </button>
+      </div>
+      {aiAnswer && <div className="mt-6 p-6 bg-[#FAFAFA] dark:bg-[#121212] rounded-2xl text-sm font-light">{aiAnswer}</div>}
+    </div>
+  </div>
+);
+
 // --- Main App Component ---
 
 export default function App() {
   const [step, setStep] = useState(1);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [view, setView] = useState<'landing' | 'generator' | 'dashboard' | 'shelf' | 'progress'>('landing');
+  const [view, setView] = useState<'landing' | 'generator' | 'dashboard' | 'shelf' | 'progress' | 'tools'>('landing');
   const [savedRoutines, setSavedRoutines] = useState<any[]>([]);
   const [progressEntries, setProgressEntries] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'routine' | 'tools'>('routine');
 
   const [answers, setAnswers] = useState({
     skinType: '',
@@ -827,7 +811,6 @@ export default function App() {
 
   const [routine, setRoutine] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
 
   const loadingSteps = [
@@ -853,8 +836,6 @@ export default function App() {
   const [isAsking, setIsAsking] = useState(false);
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isDiaryModalOpen, setIsDiaryModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -862,7 +843,6 @@ export default function App() {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
-  const [scanResult, setScanResult] = useState<string | null>(null);
 
   const [analyzeInput, setAnalyzeInput] = useState('');
   const [analyzeResult, setAnalyzeResult] = useState('');
@@ -899,6 +879,7 @@ export default function App() {
 
   const generateRoutine = async () => {
     setIsLoading(true);
+    setActiveTab('routine');
     setAiQuestion('');
     setAiAnswer('');
     setAnalyzeInput('');
@@ -957,34 +938,70 @@ export default function App() {
     }
   };
 
-  const handlePrint = async () => {
-    setIsGeneratingPDF(true);
-    setTimeout(async () => {
-      try {
-        const element = document.getElementById('routine-print-area');
-        if (element && (window as any).html2pdf) {
-          const opt = {
-            margin: 10,
-            filename: 'Aura_Skincare_Routine.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-              scale: 2, 
-              useCORS: true, 
-              backgroundColor: isDarkMode ? '#121212' : '#FAFAFA',
-              logging: false,
-              letterRendering: true
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-          };
-          await (window as any).html2pdf().set(opt).from(element).save();
-        }
-      } catch (error) {
-        console.error("PDF generation failed", error);
-      } finally {
-        setIsGeneratingPDF(false);
-      }
-    }, 150);
+  const handlePrint = () => {
+    const printContent = document.getElementById('routine-print-area');
+    if (!printContent) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Aura — Your Skincare Plan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+      @page { size: A4; margin: 14mm 16mm; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', sans-serif; font-size: 8pt; color: #1C1A17; background: #fff; line-height: 1.4; }
+      .serif { font-family: 'Playfair Display', serif; }
+      /* Header */
+      .header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 4mm; margin-bottom: 5mm; border-bottom: 1.5pt solid #1C1A17; }
+      .header-brand { display: flex; flex-direction: column; gap: 1mm; }
+      .header-title { font-family: 'Playfair Display', serif; font-size: 22pt; font-weight: 400; letter-spacing: -0.5pt; line-height: 1; }
+      .header-sub { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 2pt; color: #8C857B; font-weight: 500; }
+      .header-meta { text-align: right; font-size: 7pt; color: #8C857B; line-height: 1.6; }
+      .header-meta strong { color: #1C1A17; font-weight: 500; }
+      /* Section labels */
+      .section-label { font-size: 6pt; font-weight: 600; text-transform: uppercase; letter-spacing: 2.5pt; color: #8C857B; margin-bottom: 3mm; display: flex; align-items: center; gap: 2mm; }
+      .section-label::after { content: ''; flex: 1; height: 0.5pt; background: #E5E0DB; }
+      /* Two column grid */
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin-bottom: 4mm; }
+      .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+      .grid-7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2mm; margin-bottom: 4mm; }
+      /* Cards */
+      .card { border: 0.75pt solid #E5E0DB; border-radius: 5pt; padding: 4mm; break-inside: avoid; }
+      .card-accent-am { border-top: 2pt solid #D4A574; }
+      .card-accent-pm { border-top: 2pt solid #7BA7BC; }
+      .card-accent-week { border-top: 2pt solid #1C1A17; }
+      .card-dark { background: #1C1A17; color: #FAFAFA; border-color: #1C1A17; }
+      /* Card headers */
+      .card-header { font-family: 'Playfair Display', serif; font-size: 10pt; font-weight: 400; margin-bottom: 3mm; padding-bottom: 2mm; border-bottom: 0.5pt solid #E5E0DB; }
+      .card-dark .card-header { border-bottom-color: #333; color: #FAFAFA; }
+      /* Steps */
+      .step { display: flex; gap: 2.5mm; margin-bottom: 2.5mm; align-items: flex-start; }
+      .step:last-child { margin-bottom: 0; }
+      .step-num { width: 5mm; height: 5mm; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 6pt; font-weight: 600; flex-shrink: 0; margin-top: 0.5mm; }
+      .step-num-am { background: #FDF0E6; color: #C4854A; border: 0.5pt solid #E8C9A8; }
+      .step-num-pm { background: #E8F0F5; color: #4A7A96; border: 0.5pt solid #A8C4D8; }
+      .step-name { font-weight: 500; font-size: 7.5pt; color: #1C1A17; line-height: 1.3; }
+      .step-desc { font-size: 6.5pt; color: #6B6560; margin-top: 0.5mm; line-height: 1.4; font-weight: 300; }
+      /* Day cards */
+      .day-card { border: 0.5pt solid #E5E0DB; border-radius: 4pt; padding: 2.5mm; text-align: center; break-inside: avoid; background: #FAFAF8; }
+      .day-name { font-size: 5.5pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1pt; color: #8C857B; border-bottom: 0.5pt solid #E5E0DB; padding-bottom: 1.5mm; margin-bottom: 1.5mm; }
+      .day-focus { font-family: 'Playfair Display', serif; font-size: 7pt; color: #1C1A17; margin-bottom: 1mm; line-height: 1.2; }
+      .day-detail { font-size: 5.5pt; color: #8C857B; line-height: 1.3; font-weight: 300; }
+      /* Analysis */
+      .analysis-label { font-size: 6pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5pt; color: #8C857B; margin-bottom: 1.5mm; }
+      .analysis-text { font-size: 7pt; color: #3D3A36; line-height: 1.5; font-weight: 300; }
+      /* Reminders */
+      .reminder { display: flex; gap: 2mm; margin-bottom: 2mm; align-items: flex-start; }
+      .reminder:last-child { margin-bottom: 0; }
+      .reminder-dot { width: 3pt; height: 3pt; border-radius: 50%; background: #1C1A17; flex-shrink: 0; margin-top: 2mm; }
+      .reminder-text { font-size: 7pt; color: #3D3A36; line-height: 1.5; font-weight: 300; }
+      /* Footer */
+      .footer { margin-top: 5mm; padding-top: 3mm; border-top: 0.5pt solid #E5E0DB; display: flex; justify-content: space-between; align-items: center; }
+      .footer-brand { font-family: 'Playfair Display', serif; font-size: 8pt; color: #8C857B; font-style: italic; }
+      .footer-tagline { font-size: 6pt; color: #B0AAA4; text-transform: uppercase; letter-spacing: 1.5pt; }
+    </style></head><body>${printContent.innerHTML}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
   };
 
   const handleAskAI = async () => {
@@ -997,36 +1014,6 @@ export default function App() {
       setAiAnswer("I'm sorry, I'm having trouble connecting right now.");
     } finally {
       setIsAsking(false);
-    }
-  };
-
-  const handleScanSkin = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      await processSkinPhoto(base64);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCapture = async (base64: string) => {
-    await processSkinPhoto(base64);
-  };
-
-  const processSkinPhoto = async (base64: string) => {
-    setIsScanning(true);
-    setScanResult(null);
-    try {
-      const result = await analyzeSkinPhoto(base64);
-      setScanResult(result);
-    } catch (error) {
-      console.error(error);
-      setScanResult("I'm sorry, I couldn't analyze that photo. Please try again with a clearer image.");
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -1105,7 +1092,7 @@ export default function App() {
           <Loader2 className="w-10 h-10 animate-spin text-[#1C1A17] dark:text-[#FAFAFA]" />
         </div>
       ) : (
-        <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] font-sans text-[#1C1A17] dark:text-[#FAFAFA] selection:bg-[#B6D3D9] selection:text-[#1C1A17] print:bg-white relative overflow-hidden transition-colors duration-500">
+        <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] font-sans text-[#1C1A17] dark:text-[#FAFAFA] selection:bg-[#B6D3D9] selection:text-[#1C1A17] print:bg-white relative print:overflow-visible transition-colors duration-500">
         
         {/* Decorative Background */}
         <div className="fixed top-20 left-10 opacity-20 pointer-events-none hidden md:block">
@@ -1142,6 +1129,12 @@ export default function App() {
                 className={`p-3 rounded-full transition-all ${view === 'progress' ? 'bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17]' : 'text-[#5C554F] dark:text-[#A3A3A3] hover:bg-[#F4F1ED] dark:hover:bg-[#2A2A2A]'}`}
               >
                 <History className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setView('tools')}
+                className={`p-3 rounded-full transition-all ${view === 'tools' ? 'bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17]' : 'text-[#5C554F] dark:text-[#A3A3A3] hover:bg-[#F4F1ED] dark:hover:bg-[#2A2A2A]'}`}
+              >
+                <Wand2 className="w-5 h-5" />
               </button>
             </>
           )}
@@ -1209,7 +1202,7 @@ export default function App() {
           <p className="text-[#5C554F] dark:text-[#A3A3A3] text-lg font-light tracking-wide">Radiate your natural glow.</p>
         </header>
 
-        <main className="max-w-4xl mx-auto px-6 pb-32 relative z-10">
+        <main className="max-w-4xl mx-auto px-6 pb-32 relative z-10 print-container">
           {view === 'landing' && (
             <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 py-12">
               <div className="text-center mb-16">
@@ -1673,8 +1666,32 @@ export default function App() {
             </div>
           )}
 
-          {view === 'generator' && (
+          {view === 'tools' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-12">
+                <h2 className="text-4xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] mb-3 tracking-tight">Skincare Tools</h2>
+                <p className="text-[#8C857B] text-sm font-light">Explore ingredients and get expert advice with Aura AI.</p>
+              </div>
+              <SkincareTools 
+                analyzeInput={analyzeInput}
+                setAnalyzeInput={setAnalyzeInput}
+                handleAnalyzeProduct={handleAnalyzeProduct}
+                isAnalyzing={isAnalyzing}
+                analyzeResult={analyzeResult}
+                aiQuestion={aiQuestion}
+                setAiQuestion={setAiQuestion}
+                handleAskAI={handleAskAI}
+                isAsking={isAsking}
+                aiAnswer={aiAnswer}
+                toggleListen={toggleListen}
+                isListening={isListening}
+                activeInput={activeInput}
+              />
+            </div>
+          )}
+
+          {view === 'generator' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 print-container">
               {step < 6 && (
                 <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.03)] dark:shadow-none p-6 md:p-12 mb-8 border border-[#E5E0DB] dark:border-[#333333] transition-colors duration-500">
                   <div className="flex items-center justify-between mb-12">
@@ -1701,51 +1718,7 @@ export default function App() {
                     <div className="space-y-10">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                         <h2 className="text-3xl font-serif text-[#1C1A17] dark:text-[#FAFAFA]">Let's get to know your skin</h2>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button 
-                            onClick={() => setIsCameraOpen(true)}
-                            className="flex items-center gap-2 px-5 py-3 rounded-full bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] text-sm font-medium hover:opacity-90 transition-all shadow-sm"
-                          >
-                            <Camera className="w-4 h-4" />
-                            Take Photo
-                          </button>
-                          <div className="relative">
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={handleScanSkin} 
-                              className="hidden" 
-                              id="skin-scan-input" 
-                            />
-                            <label 
-                              htmlFor="skin-scan-input"
-                              className="flex items-center gap-2 px-5 py-3 rounded-full bg-[#F4F1ED] dark:bg-[#2A2A2A] text-[#1C1A17] dark:text-[#FAFAFA] text-sm font-medium cursor-pointer hover:bg-[#E5E0DB] dark:hover:bg-[#333333] transition-all"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Upload
-                            </label>
-                          </div>
-                        </div>
                       </div>
-
-                      {scanResult && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10 }} 
-                          animate={{ opacity: 1, y: 0 }}
-                          className="p-6 bg-[#D4E0D9] dark:bg-[#1A2E24] rounded-2xl text-sm font-light border border-[#B6C9BD] dark:border-[#2D4A3A]"
-                        >
-                          <div className="flex items-center gap-2 mb-2 font-medium">
-                            <Sparkles className="w-4 h-4" /> AI Skin Analysis
-                          </div>
-                          <div className="whitespace-pre-wrap">{scanResult}</div>
-                          <button 
-                            onClick={() => setScanResult(null)}
-                            className="mt-4 text-xs underline underline-offset-4 opacity-60 hover:opacity-100"
-                          >
-                            Dismiss
-                          </button>
-                        </motion.div>
-                      )}
 
                       <div>
                         <label className="block text-sm font-medium text-[#5C554F] dark:text-[#A3A3A3] mb-4 uppercase tracking-wider">What is your skin type?</label>
@@ -1931,7 +1904,7 @@ export default function App() {
 
           {/* Results Step */}
           {step === 6 && (
-            <div className="animate-in fade-in zoom-in-95 duration-700">
+            <div className="animate-in fade-in zoom-in-95 duration-700 print-container">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#1E1E1E] rounded-3xl border border-[#E5E0DB] dark:border-[#333333] shadow-sm relative overflow-hidden">
                   <ThinkingAnimation />
@@ -1941,191 +1914,259 @@ export default function App() {
                 </div>
               ) : routine && (
                 <>
-                  <div className="text-center mb-12 print:hidden">
-                    <h2 className="text-4xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] mb-3 tracking-tight">Your Personalized Routine</h2>
-                    <div className="flex flex-wrap justify-center gap-4 mt-6">
-                      <button onClick={handlePrint} className="flex items-center bg-transparent border border-[#E5E0DB] dark:border-[#333333] px-6 py-3 rounded-full text-sm font-medium hover:border-[#1C1A17] dark:hover:border-[#FAFAFA] transition-all">
-                        <Printer className="w-4 h-4 mr-2 stroke-[1.5]" />
-                        Print / PDF
+                  <div className="text-center mb-8 print:hidden">
+                    <h2 className="text-4xl font-serif text-[#1C1A17] dark:text-[#FAFAFA] mb-8 tracking-tight">Your Personalized Routine</h2>
+                    
+                    <div className="flex justify-center gap-2 mb-12">
+                      <button 
+                        onClick={() => setActiveTab('routine')}
+                        className={`px-8 py-3 rounded-full text-sm font-medium transition-all ${activeTab === 'routine' ? 'bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17]' : 'bg-[#F4F1ED] dark:bg-[#2A2A2A] text-[#8C857B] hover:text-[#1C1A17] dark:hover:text-[#FAFAFA]'}`}
+                      >
+                        Routine Plan
                       </button>
-                      {user && (
-                        <button 
-                          onClick={() => saveCurrentRoutine(routine)} 
-                          className="flex items-center bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] px-6 py-3 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg"
-                        >
-                          <Star className="w-4 h-4 mr-2 stroke-[1.5] fill-current" />
-                          Save to Aura
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => setActiveTab('tools')}
+                        className={`px-8 py-3 rounded-full text-sm font-medium transition-all ${activeTab === 'tools' ? 'bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17]' : 'bg-[#F4F1ED] dark:bg-[#2A2A2A] text-[#8C857B] hover:text-[#1C1A17] dark:hover:text-[#FAFAFA]'}`}
+                      >
+                        Skincare Tools
+                      </button>
                     </div>
-                  </div>
 
-                  <div id="routine-print-area" className={`p-8 sm:p-12 bg-inherit w-full max-w-[800px] mx-auto ${isGeneratingPDF ? 'overflow-visible' : ''}`}>
-                    {/* Analysis Section */}
-                    {routine.analysis && (
-                      <div className="bg-[#F4F1ED] dark:bg-[#2A2A2A] rounded-3xl p-8 mb-8 border border-[#E5E0DB] dark:border-[#333333]">
-                        <div className="flex items-center mb-6">
-                          <Sparkles className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                          <h3 className="text-2xl font-serif">Expert Analysis</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Working Well</h4>
-                            <p className="text-sm font-light leading-relaxed">{routine.analysis.workingWell}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Needs Attention</h4>
-                            <p className="text-sm font-light leading-relaxed">{routine.analysis.issuesToWatch}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Missing Pieces</h4>
-                            <p className="text-sm font-light leading-relaxed">{routine.analysis.missingElements}</p>
-                          </div>
-                        </div>
+                    {activeTab === 'routine' && (
+                      <div className="flex flex-wrap justify-center gap-4 mt-6">
+                        <button onClick={handlePrint} className="flex items-center bg-transparent border border-[#E5E0DB] dark:border-[#333333] px-6 py-3 rounded-full text-sm font-medium hover:border-[#1C1A17] dark:hover:border-[#FAFAFA] transition-all">
+                          <Printer className="w-4 h-4 mr-2 stroke-[1.5]" />
+                          Print / PDF
+                        </button>
+                        {user && (
+                          <button 
+                            onClick={() => saveCurrentRoutine(routine)} 
+                            className="flex items-center bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] px-6 py-3 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-lg"
+                          >
+                            <Star className="w-4 h-4 mr-2 stroke-[1.5] fill-current" />
+                            Save to Aura
+                          </button>
+                        )}
                       </div>
                     )}
-
-                    {/* AM Routine */}
-                    <div className={`bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-sm ${isGeneratingPDF ? 'overflow-visible' : 'overflow-hidden'} mb-8 border border-[#E5E0DB] dark:border-[#333333]`}>
-                      <div className="px-8 py-6 flex items-center border-b border-[#E5E0DB] dark:border-[#333333]">
-                        <Sun className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                        <h3 className="text-2xl font-serif">Morning Routine</h3>
-                      </div>
-                      <div className="p-8 space-y-10">
-                        {routine.am.map((item: any, idx: number) => (
-                          <div key={idx} className="flex">
-                            <div className="flex flex-col items-center mr-6">
-                              <div className="relative w-10 h-10 flex items-center justify-center">
-                                <div className="absolute inset-0 bg-[#F4D5C9] rounded-full opacity-50"></div>
-                                <span className="relative z-10 font-medium">{item.step}</span>
-                              </div>
-                              {idx !== routine.am.length - 1 && <div className="w-px h-full bg-[#E5E0DB] mt-3"></div>}
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-medium mb-1">{item.name}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* PM Routine */}
-                    <div className={`bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-sm ${isGeneratingPDF ? 'overflow-visible' : 'overflow-hidden'} mb-8 border border-[#E5E0DB] dark:border-[#333333]`}>
-                      <div className="px-8 py-6 flex items-center border-b border-[#E5E0DB] dark:border-[#333333]">
-                        <Moon className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                        <h3 className="text-2xl font-serif">Nighttime Routine</h3>
-                      </div>
-                      <div className="p-8 space-y-10">
-                        {routine.pm.map((item: any, idx: number) => (
-                          <div key={idx} className="flex">
-                            <div className="flex flex-col items-center mr-6">
-                              <div className="relative w-10 h-10 flex items-center justify-center">
-                                <div className="absolute inset-0 bg-[#B6D3D9] rounded-full opacity-50"></div>
-                                <span className="relative z-10 font-medium">{item.step}</span>
-                              </div>
-                              {idx !== routine.pm.length - 1 && <div className="w-px h-full bg-[#E5E0DB] mt-3"></div>}
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-medium mb-1">{item.name}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Weekly Breakdown */}
-                    {routine.weeklySchedule?.length > 0 && (
-                      <div className={`bg-transparent rounded-3xl p-8 mb-8 border border-[#E5E0DB] dark:border-[#333333] ${isGeneratingPDF ? 'overflow-visible' : 'overflow-hidden'}`}>
-                        <div className="flex items-center mb-8">
-                          <CalendarDays className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                          <h3 className="text-2xl font-serif">7-Day PM Schedule</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {routine.weeklySchedule.map((schedule: any, idx: number) => (
-                            <div key={idx} className="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 border border-[#E5E0DB] dark:border-[#333333] flex flex-col h-full">
-                              <span className="text-[10px] font-bold uppercase tracking-widest bg-[#F4F1ED] dark:bg-[#2A2A2A] px-3 py-1 rounded-full w-fit mb-4">{schedule.day}</span>
-                              <h4 className="font-medium mb-2 text-base">{schedule.focus}</h4>
-                              <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed flex-grow">{schedule.details}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    <div className={`bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 mb-8 border border-[#1C1A17] dark:border-[#FAFAFA] ${isGeneratingPDF ? 'overflow-visible' : 'overflow-hidden'}`}>
-                      <div className="flex items-center mb-6">
-                        <Heart className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                        <h3 className="text-2xl font-serif">Gentle Reminders</h3>
-                      </div>
-                      <ul className="space-y-4">
-                        {routine.notes.map((note: string, idx: number) => (
-                          <li key={idx} className="flex items-start">
-                            <div className="mt-1.5 mr-3 w-1.5 h-1.5 rounded-full bg-[#1C1A17] dark:bg-[#FAFAFA] flex-shrink-0"></div>
-                            <span className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light">{note}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
 
-                  {/* AI Tools */}
-                  <div className="space-y-8 print:hidden">
-                    {/* Analyzer */}
-                    <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 border border-[#E5E0DB] dark:border-[#333333]">
-                      <div className="flex items-center mb-4">
-                        <Search className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                        <h3 className="text-2xl font-serif">Ingredient Analyzer</h3>
-                      </div>
-                      <div className="relative">
-                        <textarea
-                          value={analyzeInput}
-                          onChange={(e) => setAnalyzeInput(e.target.value)}
-                          placeholder="Paste ingredients here..."
-                          className="w-full px-5 py-4 pr-14 rounded-2xl border border-[#E5E0DB] dark:border-[#333333] min-h-[120px] bg-transparent"
-                        />
-                        <div className="absolute right-3 bottom-3">
-                          <SpeechToTextButton 
-                            isActive={isListening && activeInput === 'analyzer'}
-                            onClick={() => toggleListen(setAnalyzeInput, 'analyzer', analyzeInput)}
-                          />
-                        </div>
-                        <button onClick={handleAnalyzeProduct} disabled={isAnalyzing || !analyzeInput.trim()} className="mt-4 bg-[#1C1A17] text-white px-8 py-3 rounded-full font-medium ml-auto block">
-                          {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Analyze ✨'}
-                        </button>
-                      </div>
-                      {analyzeResult && <div className="mt-6 p-6 bg-[#FAFAFA] dark:bg-[#121212] rounded-2xl text-sm font-light">{analyzeResult}</div>}
-                    </div>
+                  {activeTab === 'routine' ? (
+                    <>
+                      {/* SCREEN VIEW: Normal Layout */}
+                      <div className="screen-only bg-inherit max-w-[800px] mx-auto p-8 sm:p-12">
+                        {/* Analysis Section */}
+                        {routine.analysis && (
+                          <div className="bg-[#F4F1ED] dark:bg-[#2A2A2A] rounded-3xl p-8 mb-8 border border-[#E5E0DB] dark:border-[#333333]">
+                            <div className="flex items-center mb-6">
+                              <Sparkles className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                              <h3 className="text-2xl font-serif">Expert Analysis</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                              <div className="space-y-0">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Working Well</h4>
+                                <p className="text-sm font-light leading-relaxed">{routine.analysis.workingWell}</p>
+                              </div>
+                              <div className="space-y-0">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Needs Attention</h4>
+                                <p className="text-sm font-light leading-relaxed">{routine.analysis.issuesToWatch}</p>
+                              </div>
+                              <div className="space-y-0">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-[#8C857B]">Missing Pieces</h4>
+                                <p className="text-sm font-light leading-relaxed">{routine.analysis.missingElements}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                    {/* Q&A */}
-                    <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 border border-[#E5E0DB] dark:border-[#333333]">
-                      <div className="flex items-center mb-4">
-                        <MessageCircle className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
-                        <h3 className="text-2xl font-serif">Ask AI</h3>
-                      </div>
-                      <div className="flex gap-4 relative">
-                        <input
-                          type="text"
-                          value={aiQuestion}
-                          onChange={(e) => setAiQuestion(e.target.value)}
-                          placeholder="Ask a question..."
-                          className="flex-1 px-5 py-4 pr-14 rounded-2xl border border-[#E5E0DB] dark:border-[#333333] bg-transparent"
-                        />
-                        <div className="absolute right-[140px] top-1/2 -translate-y-1/2">
-                          <SpeechToTextButton 
-                            isActive={isListening && activeInput === 'aiQuestion'}
-                            onClick={() => toggleListen(setAiQuestion, 'aiQuestion', aiQuestion)}
-                          />
+                        {/* AM Routine */}
+                        <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-sm overflow-hidden mb-8 border border-[#E5E0DB] dark:border-[#333333]">
+                          <div className="px-8 py-6 flex items-center border-b border-[#E5E0DB] dark:border-[#333333]">
+                            <Sun className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                            <h3 className="text-2xl font-serif">Morning Routine</h3>
+                          </div>
+                          <div className="p-8 space-y-10">
+                            {routine.am.map((item: any, idx: number) => (
+                              <div key={idx} className="flex">
+                                <div className="flex flex-col items-center mr-6">
+                                  <div className="relative w-10 h-10 flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-[#F4D5C9] rounded-full opacity-50"></div>
+                                    <span className="relative z-10 font-medium">{item.step}</span>
+                                  </div>
+                                  {idx !== routine.am.length - 1 && <div className="w-px h-full bg-[#E5E0DB] mt-3"></div>}
+                                </div>
+                                <div>
+                                  <h4 className="text-lg font-medium mb-1">{item.name}</h4>
+                                  <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <button onClick={handleAskAI} disabled={isAsking || !aiQuestion.trim()} className="bg-[#1C1A17] text-white px-8 py-4 rounded-full font-medium">
-                          {isAsking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Ask ✨'}
-                        </button>
+
+                        {/* PM Routine */}
+                        <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-sm overflow-hidden mb-8 border border-[#E5E0DB] dark:border-[#333333]">
+                          <div className="px-8 py-6 flex items-center border-b border-[#E5E0DB] dark:border-[#333333]">
+                            <Moon className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                            <h3 className="text-2xl font-serif">Nighttime Routine</h3>
+                          </div>
+                          <div className="p-8 space-y-10">
+                            {routine.pm.map((item: any, idx: number) => (
+                              <div key={idx} className="flex">
+                                <div className="flex flex-col items-center mr-6">
+                                  <div className="relative w-10 h-10 flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-[#B6D3D9] rounded-full opacity-50"></div>
+                                    <span className="relative z-10 font-medium">{item.step}</span>
+                                  </div>
+                                  {idx !== routine.pm.length - 1 && <div className="w-px h-full bg-[#E5E0DB] mt-3"></div>}
+                                </div>
+                                <div>
+                                  <h4 className="text-lg font-medium mb-1">{item.name}</h4>
+                                  <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed">{item.desc}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Weekly Breakdown */}
+                        {routine.weeklySchedule?.length > 0 && (
+                          <div className="bg-transparent rounded-3xl p-8 mb-8 border border-[#E5E0DB] dark:border-[#333333] overflow-hidden">
+                            <div className="flex items-center mb-8">
+                              <CalendarDays className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                              <h3 className="text-2xl font-serif">7-Day PM Schedule</h3>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              {routine.weeklySchedule.map((schedule: any, idx: number) => (
+                                <div key={idx} className="bg-white dark:bg-[#1E1E1E] rounded-2xl p-6 border border-[#E5E0DB] dark:border-[#333333] flex flex-col h-full">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest bg-[#F4F1ED] dark:bg-[#2A2A2A] px-3 py-1 rounded-full w-fit mb-4">{schedule.day}</span>
+                                  <h4 className="font-medium mb-2 text-base">{schedule.focus}</h4>
+                                  <p className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light leading-relaxed flex-grow">{schedule.details}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reminders */}
+                        <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-8 mb-8 border border-[#1C1A17] dark:border-[#FAFAFA] overflow-hidden">
+                          <div className="flex items-center mb-6">
+                            <Heart className="w-6 h-6 text-[#1C1A17] dark:text-[#FAFAFA] mr-3 stroke-[1.5]" />
+                            <h3 className="text-2xl font-serif">Gentle Reminders</h3>
+                          </div>
+                          <div>
+                            <ul className="space-y-4">
+                              {routine.notes.map((note: string, idx: number) => (
+                                <li key={idx} className="flex items-start">
+                                  <div className="mt-1.5 mr-3 w-1.5 h-1.5 rounded-full bg-[#1C1A17] dark:bg-[#FAFAFA] flex-shrink-0"></div>
+                                  <span className="text-[#5C554F] dark:text-[#A3A3A3] text-sm font-light">{note}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
                       </div>
-                      {aiAnswer && <div className="mt-6 p-6 bg-[#FAFAFA] dark:bg-[#121212] rounded-2xl text-sm font-light">{aiAnswer}</div>}
-                    </div>
-                  </div>
+
+                      {/* PRINT VIEW: Ultra Compact Layout */}
+                      <div id="routine-print-area" style={{ display: 'none' }}>
+                        <div className="header">
+                          <div className="header-brand">
+                            <div className="header-title">Aura</div>
+                            <div className="header-sub">Personalized Skincare Plan</div>
+                          </div>
+                          <div className="header-meta">
+                            <div>Prepared for <strong>{user?.displayName || 'You'}</strong></div>
+                            <div>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                          </div>
+                        </div>
+
+                        <div className="grid-2">
+                          <div className="card card-accent-am">
+                            <div className="card-header">Morning Routine</div>
+                            {routine?.am?.map((item: any, idx: number) => (
+                              <div key={idx} className="step">
+                                <div className="step-num step-num-am">{item.step}</div>
+                                <div>
+                                  <div className="step-name">{item.name}</div>
+                                  <div className="step-desc">{item.desc}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="card card-accent-pm">
+                            <div className="card-header">Nighttime Routine</div>
+                            {routine?.pm?.map((item: any, idx: number) => (
+                              <div key={idx} className="step">
+                                <div className="step-num step-num-pm">{item.step}</div>
+                                <div>
+                                  <div className="step-name">{item.name}</div>
+                                  <div className="step-desc">{item.desc}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {routine?.weeklySchedule?.length > 0 && (
+                          <div className="section-label">7-Day PM Schedule</div>
+                        )}
+                        {routine?.weeklySchedule?.length > 0 && (
+                          <div className="grid-7">
+                            {routine.weeklySchedule.map((s: any, idx: number) => (
+                              <div key={idx} className="day-card">
+                                <div className="day-name">{s.day}</div>
+                                <div className="day-focus">{s.focus}</div>
+                                <div className="day-detail">{s.details}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="grid-2">
+                          {routine?.analysis && (
+                            <div className="card">
+                              <div className="card-header">Expert Analysis</div>
+                              <div className="grid-3">
+                                <div><div className="analysis-label">Working Well</div><div className="analysis-text">{routine.analysis.workingWell}</div></div>
+                                <div><div className="analysis-label">Needs Attention</div><div className="analysis-text">{routine.analysis.issuesToWatch}</div></div>
+                                <div><div className="analysis-label">Missing Pieces</div><div className="analysis-text">{routine.analysis.missingElements}</div></div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="card card-dark">
+                            <div className="card-header">Gentle Reminders</div>
+                            {routine?.notes?.map((note: string, idx: number) => (
+                              <div key={idx} className="reminder">
+                                <div className="reminder-dot" style={{ background: '#FAFAFA' }}></div>
+                                <div className="reminder-text" style={{ color: '#C8C4BE' }}>{note}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="footer">
+                          <div className="footer-brand">Aura Skincare</div>
+                          <div className="footer-tagline">Radiate your natural glow</div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <SkincareTools 
+                      analyzeInput={analyzeInput}
+                      setAnalyzeInput={setAnalyzeInput}
+                      handleAnalyzeProduct={handleAnalyzeProduct}
+                      isAnalyzing={isAnalyzing}
+                      analyzeResult={analyzeResult}
+                      aiQuestion={aiQuestion}
+                      setAiQuestion={setAiQuestion}
+                      handleAskAI={handleAskAI}
+                      isAsking={isAsking}
+                      aiAnswer={aiAnswer}
+                      toggleListen={toggleListen}
+                      isListening={isListening}
+                      activeInput={activeInput}
+                    />
+                  )}
 
                   <div className="mt-12 text-center print:hidden">
                     <button onClick={resetQuiz} className="text-[#1C1A17] dark:text-[#FAFAFA] font-medium underline underline-offset-8">Start Over</button>
@@ -2137,11 +2178,6 @@ export default function App() {
         </div>
       )}
     </main>
-    <CameraModal 
-      isOpen={isCameraOpen} 
-      onClose={() => setIsCameraOpen(false)} 
-      onCapture={handleCapture} 
-    />
     <ProductModal 
       isOpen={isProductModalOpen} 
       onClose={() => setIsProductModalOpen(false)} 
