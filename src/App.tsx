@@ -557,9 +557,6 @@ export default function App() {
       setUser(currentUser);
       setIsAuthLoading(false);
       // If user logs in and is on landing, move to dashboard
-      if (currentUser && view === 'landing') {
-        setView('dashboard');
-      }
     });
     return () => unsubscribe();
   }, [view]);
@@ -1325,6 +1322,12 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsReviewModalOpen(true)}
+                    className="px-6 py-3 rounded-full border border-[#E5E0DB] dark:border-[#333333] text-sm font-medium hover:opacity-90 transition-all flex items-center gap-2"
+                  >
+                    <Star className="w-4 h-4" /> Write a Review
+                  </button>
                   <button 
                     onClick={handleLogout}
                     className="px-6 py-3 rounded-full border border-[#E5E0DB] dark:border-[#333333] text-sm font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all flex items-center gap-2"
