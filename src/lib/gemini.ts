@@ -61,7 +61,7 @@ export const routineSchema = {
 export const generateSkincareRoutine = async (answers: any) => {
   const prompt = `
   Act as an expert skincare advisor and formulator.
-  Create a highly personalized and educational skincare routine based on these user preferences:
+  Create a highly personalized skincare routine based on these user preferences:
   - Skin Type: ${answers.skinType}
   - Goals: ${answers.goals.join(", ")}
   - Sensitivities: ${answers.sensitivities}
@@ -73,25 +73,25 @@ export const generateSkincareRoutine = async (answers: any) => {
   - Past Reactions: ${answers.reactions.join(", ")}
   - Seeing a Dermatologist: ${answers.dermatologist}
 
-  YOUR GOAL: Provide a gap analysis and build a complete routine from scratch based on their goals — not just around what they already own.
+  ANALYSIS RULES:
+  1. GAP ANALYSIS - For the analysis section:
+     - "workingWell": Which of their CURRENT PRODUCTS are good and should be kept.
+     - "issuesToWatch": Which of their CURRENT PRODUCTS are ineffective, redundant, or conflicting with their goals. Be specific about what to remove or reduce.
+     - "missingElements": What specific ingredient types are MISSING from their current routine that would help them reach their goals. Be explicit (e.g. "You are missing a Vitamin C serum for brightening and a chemical exfoliant like AHA for texture").
 
-  1. ANALYSIS (required):
-     - workingWell: Which of their CURRENT PRODUCTS are actually effective and appropriate for their skin type and goals. If none, say so.
-     - issuesToWatch: Which of their CURRENT PRODUCTS should be removed or used with caution — and WHY (e.g. conflicts with goals, potential irritants, redundant steps).
-     - missingElements: What specific ingredient types are MISSING from their current routine that would help them reach their stated goals. Be explicit (e.g. "No SPF", "No Vitamin C for brightening", "No retinoid for anti-aging").
+  2. BUILD THE IDEAL ROUTINE based on their goals, not around their existing products. The routine should reflect what they SHOULD be doing, not just what they already own.
 
-  2. BUILD THE ROUTINE based on their GOALS, not just their current products:
-     - Recommend the IDEAL full routine for their skin type and goals.
-     - If one of their current products fits, include it. If it does not fit, do NOT include it.
-     - NEVER reference a product or ingredient in the routine steps or weekly schedule that is not explicitly listed as a step in either the AM or PM routine.
-     - NEVER use vague terms like "active serum" — always name the exact ingredient (e.g. "Retinol Serum", "Salicylic Acid (BHA) Toner", "Vitamin C Serum").
-     - Every step must have a specific ingredient type as its name.
+  3. STRICT NAMING RULES - Every single step must use explicit ingredient names:
+     - NEVER say "active serum" - always specify the exact active (e.g. "Retinol Serum", "Niacinamide Serum", "Salicylic Acid (BHA) Serum")
+     - NEVER say "treatment" without specifying what type
+     - If a PM step rotates between products, list ALL options explicitly (e.g. "Rotating Treatment: Retinol Serum OR Salicylic Acid (BHA)")
+     - Every step in weeklySchedule must name the exact ingredient being used that night
 
-  3. WEEKLY SCHEDULE:
-     - Only reference ingredients that exist as named steps in the PM routine above.
-     - Never say "active serum" — always say "your Retinol" or "your Salicylic Acid (BHA)" etc.
+  4. EDUCATIONAL GUIDANCE - For each step include a short explanation of WHY this ingredient is included for this specific user's goals and skin type.
 
-  ${answers.sensitiveTo ? `CRITICAL RULE: NEVER recommend any ingredient that overlaps with their sensitivities: ${answers.sensitiveTo}.` : ''}
+  ${answers.sensitiveTo ? `CRITICAL: NEVER recommend anything that overlaps with their stated sensitivities: ${answers.sensitiveTo}` : ''}
+
+  Build a complete 7-day PM weeklySchedule mapping out exactly which ingredients to use each night, naming them specifically.
 `;
 
   const response = await ai.models.generateContent({
