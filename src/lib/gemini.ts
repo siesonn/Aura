@@ -60,40 +60,42 @@ export const routineSchema = {
 
 export const generateSkincareRoutine = async (answers: any) => {
   const prompt = `
-    Act as an expert skincare advisor and formulator. 
-    Create a highly personalized and educational skincare routine based on these user preferences:
-    - Skin Type: ${answers.skinType}
-    - Goals: ${answers.goals.join(", ")}
-    - Sensitivities: ${answers.sensitivities}
-    ${answers.sensitiveTo ? `- SPECIFIC INGREDIENTS/PRODUCTS TO AVOID: ${answers.sensitiveTo}` : ''}
-    - Fragrance Free: ${answers.fragranceFree}
-    - Routine Preference: ${answers.advanced} (${answers.commitment})
-    - Budget: ${answers.budget || 'Any'}
-    - Willing to rotate PM products: ${answers.rotate}
-    - Current Products: ${answers.currentProducts.join(", ")}
-    - Past Reactions: ${answers.reactions.join(", ")}
-    - Seeing a Dermatologist: ${answers.dermatologist}
-    
-    YOUR GOAL: Provide a guided, educational experience for the user.
-    
-    1. PERSONALIZED ANALYSIS:
-       - Identify what they are currently using that is working well.
-       - Call out anything in their current routine that may not be effective or may be causing issues (e.g., conflicting actives, lack of hydration).
-       - Identify what is missing from their routine based on their goals and skin type.
-    
-    2. SPECIFIC RECOMMENDATIONS:
-       - Recommend specific PRODUCT CATEGORIES and INGREDIENT TYPES (not brands).
-       - Examples: 'Hyaluronic Acid Serum', 'Niacinamide Serum', 'Retinoid', 'Salicylic Acid (BHA)', 'Ceramide Moisturizer', 'Mineral SPF'.
-       - When referencing something like "active serum," EXPLICITLY define what that means for this specific user (e.g., "Active Serum (Retinol)").
-    
-    3. EDUCATIONAL GUIDANCE:
-       - Name the actual product types or ingredients in each step.
-       - Include short, simple explanations for each recommendation so a beginner understands WHY it is included.
-    
-    ${answers.sensitiveTo ? `CRITICAL RULE: ABSOLUTELY DO NOT recommend any product categories or ingredients that overlap with their sensitivities (${answers.sensitiveTo}).` : ''}
-    
-    Provide a 7-day schedule breakdown for the "weeklySchedule". Map out their actives and recovery nights (Monday to Sunday). Be explicit about which ingredient to use each night.
-  `;
+  Act as an expert skincare advisor and formulator. 
+  Create a highly personalized and educational skincare routine based on these user preferences:
+  - Skin Type: ${answers.skinType}
+  - Goals: ${answers.goals.join(", ")}
+  - Sensitivities: ${answers.sensitivities}
+  ${answers.sensitiveTo ? `- SPECIFIC INGREDIENTS/PRODUCTS TO AVOID: ${answers.sensitiveTo}` : ''}
+  - Fragrance Free: ${answers.fragranceFree}
+  - Routine Preference: ${answers.advanced} (${answers.commitment})
+  - Budget: ${answers.budget || 'Any'}
+  - Willing to rotate PM products: ${answers.rotate}
+  - Current Products: ${answers.currentProducts.join(", ")}
+  - Past Reactions: ${answers.reactions.join(", ")}
+  - Seeing a Dermatologist: ${answers.dermatologist}
+  
+  YOUR GOAL: Provide a guided, educational experience for the user.
+  
+  1. PERSONALIZED ANALYSIS:
+     - Identify what they are currently using that is working well.
+     - Call out anything in their current routine that may not be effective or may be causing issues (e.g., conflicting actives, talk of hydration).
+     - Identify what is missing from their routine based on their goals and skin type.
+  
+  2. SPECIFIC RECOMMENDATIONS:
+     - Recommend specific PRODUCT CATEGORIES and INGREDIENT TYPES (not brands).
+     - Examples: 'Hyaluronic Acid Serum', 'Niacinamide Serum', 'Retinoid', 'Salicylic Acid (BHA)', 'Ceramide Moisturizer', 'Mineral SPF'.
+     - CRITICAL: Every single step in both the AM and PM routine must be explicitly named with the exact ingredient or product type. NEVER use vague terms like 'active serum' — always specify what the active is (e.g., 'Retinol Serum', 'Salicylic Acid Serum').
+     - If a step rotates, list ALL the options for that step explicitly (e.g., 'Rotating Active: Retinol OR Salicylic Acid (BHA)').
+  
+  3. EDUCATIONAL GUIDANCE:
+     - Name the actual product types or ingredients in each step.
+     - Include short, simple explanations for each recommendation so a beginner understands WHY it is included.
+     - In the weeklySchedule, always name the specific ingredient being used that night — never say 'active serum', say 'your Retinol' or 'your Salicylic Acid'.
+  
+  ${answers.sensitiveTo ? `CRITICAL RULE: ABSOLUTELY DO NOT recommend any product categories or ingredients that overlap with their sensitivities (${answers.sensitiveTo}).` : ''}
+  
+  Provide a 7-day schedule breakdown for the weeklySchedule. Map out their actives and recovery nights Monday to Sunday. Be explicit about which ingredient to use each night.
+`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.0-flash",

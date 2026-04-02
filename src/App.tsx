@@ -354,22 +354,15 @@ const ReviewModal = ({
             <label className="block text-xs font-bold uppercase tracking-widest text-[#8C857B] mb-3">Rating</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="p-1 transition-transform hover:scale-110"
-                >
-                  <Star 
-                    className={`w-8 h-8 ${star <= rating ? 'fill-[#1C1A17] dark:fill-[#FAFAFA] text-[#1C1A17] dark:text-[#FAFAFA]' : 'text-[#E5E0DB] dark:text-[#333333]'}`} 
-                  />
+                <button key={star} type="button" onClick={() => setRating(star)} className="p-1 transition-transform hover:scale-110">
+                  <Star className={`w-8 h-8 ${star <= rating ? 'fill-[#1C1A17] dark:fill-[#FAFAFA] text-[#1C1A17] dark:text-[#FAFAFA]' : 'text-[#E5E0DB] dark:text-[#333333]'}`} />
                 </button>
               ))}
             </div>
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-[#8C857B] mb-2">Your Thoughts</label>
-            <textarea 
+            <textarea
               autoFocus
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -378,7 +371,7 @@ const ReviewModal = ({
               required
             />
           </div>
-          <button 
+          <button
             type="submit"
             disabled={isSubmitting || !comment.trim()}
             className="w-full py-4 rounded-full bg-[#1C1A17] text-white dark:bg-[#FAFAFA] dark:text-[#1C1A17] font-medium shadow-lg active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
