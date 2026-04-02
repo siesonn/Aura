@@ -526,6 +526,9 @@ export default function App() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'routine' | 'tools'>('routine');
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const [answers, setAnswers] = useState({
     skinType: '',
@@ -831,9 +834,6 @@ export default function App() {
   const [aiAnswer, setAiAnswer] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isDiaryModalOpen, setIsDiaryModalOpen] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
 
@@ -1225,7 +1225,7 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
                 {[
-                  { icon: Sparkles, title: "AI Analysis", desc: "Scan your skin or analyze ingredients with Gemini 1.5 Pro.", color: "bg-[#F4D5C9]" },
+                  { icon: Sparkles, title: "AI Analysis", desc: "Analyze your product ingredients and get personalized AI skincare advice.", color: "bg-[#F4D5C9]" },
                   { icon: CalendarDays, title: "Smart Tracking", desc: "Log your morning and night routines to see real progress.", color: "bg-[#D4E0D9]" },
                   { icon: ShoppingBag, title: "Digital Shelf", desc: "Keep track of your products and their expiration dates.", color: "bg-[#B6D3D9]" }
                 ].map((feature, i) => (
