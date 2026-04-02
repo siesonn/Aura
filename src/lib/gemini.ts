@@ -94,17 +94,23 @@ export const generateSkincareRoutine = async (answers: any) => {
   Build a complete 7-day PM weeklySchedule mapping out exactly which ingredients to use each night, naming them specifically.
 `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: [{ parts: [{ text: prompt }] }],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: routineSchema,
-      systemInstruction: "You are a warm, reassuring, and expert skincare advisor."
-    }
-  });
-
-  return JSON.parse(response.text || "{}");
+  try {
+    console.log('Attempting Gemini API call with model: gemini-2.0-flash');
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: routineSchema,
+        systemInstruction: "You are a warm, reassuring, and expert skincare advisor.",
+      }
+    });
+    console.log('Gemini API Success');
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error('Gemini API Failed:', error);
+    throw error;
+  }
 };
 
 export const askSkincareAI = async (question: string, answers: any, routine: any) => {
