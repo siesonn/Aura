@@ -60,7 +60,7 @@ export const routineSchema = {
 
 export const generateSkincareRoutine = async (answers: any) => {
   const prompt = `
-  Act as an expert skincare advisor and formulator. 
+  Act as an expert skincare advisor and formulator.
   Create a highly personalized and educational skincare routine based on these user preferences:
   - Skin Type: ${answers.skinType}
   - Goals: ${answers.goals.join(", ")}
@@ -69,32 +69,29 @@ export const generateSkincareRoutine = async (answers: any) => {
   - Fragrance Free: ${answers.fragranceFree}
   - Routine Preference: ${answers.advanced} (${answers.commitment})
   - Budget: ${answers.budget || 'Any'}
-  - Willing to rotate PM products: ${answers.rotate}
-  - Current Products: ${answers.currentProducts.join(", ")}
+  - Current Products the user already owns: ${answers.currentProducts.join(", ")}
   - Past Reactions: ${answers.reactions.join(", ")}
   - Seeing a Dermatologist: ${answers.dermatologist}
-  
-  YOUR GOAL: Provide a guided, educational experience for the user.
-  
-  1. PERSONALIZED ANALYSIS:
-     - Identify what they are currently using that is working well.
-     - Call out anything in their current routine that may not be effective or may be causing issues (e.g., conflicting actives, talk of hydration).
-     - Identify what is missing from their routine based on their goals and skin type.
-  
-  2. SPECIFIC RECOMMENDATIONS:
-     - Recommend specific PRODUCT CATEGORIES and INGREDIENT TYPES (not brands).
-     - Examples: 'Hyaluronic Acid Serum', 'Niacinamide Serum', 'Retinoid', 'Salicylic Acid (BHA)', 'Ceramide Moisturizer', 'Mineral SPF'.
-     - CRITICAL: Every single step in both the AM and PM routine must be explicitly named with the exact ingredient or product type. NEVER use vague terms like 'active serum' — always specify what the active is (e.g., 'Retinol Serum', 'Salicylic Acid Serum').
-     - If a step rotates, list ALL the options for that step explicitly (e.g., 'Rotating Active: Retinol OR Salicylic Acid (BHA)').
-  
-  3. EDUCATIONAL GUIDANCE:
-     - Name the actual product types or ingredients in each step.
-     - Include short, simple explanations for each recommendation so a beginner understands WHY it is included.
-     - In the weeklySchedule, always name the specific ingredient being used that night — never say 'active serum', say 'your Retinol' or 'your Salicylic Acid'.
-  
-  ${answers.sensitiveTo ? `CRITICAL RULE: ABSOLUTELY DO NOT recommend any product categories or ingredients that overlap with their sensitivities (${answers.sensitiveTo}).` : ''}
-  
-  Provide a 7-day schedule breakdown for the weeklySchedule. Map out their actives and recovery nights Monday to Sunday. Be explicit about which ingredient to use each night.
+
+  YOUR GOAL: Provide a gap analysis and build a complete routine from scratch based on their goals — not just around what they already own.
+
+  1. ANALYSIS (required):
+     - workingWell: Which of their CURRENT PRODUCTS are actually effective and appropriate for their skin type and goals. If none, say so.
+     - issuesToWatch: Which of their CURRENT PRODUCTS should be removed or used with caution — and WHY (e.g. conflicts with goals, potential irritants, redundant steps).
+     - missingElements: What specific ingredient types are MISSING from their current routine that would help them reach their stated goals. Be explicit (e.g. "No SPF", "No Vitamin C for brightening", "No retinoid for anti-aging").
+
+  2. BUILD THE ROUTINE based on their GOALS, not just their current products:
+     - Recommend the IDEAL full routine for their skin type and goals.
+     - If one of their current products fits, include it. If it does not fit, do NOT include it.
+     - NEVER reference a product or ingredient in the routine steps or weekly schedule that is not explicitly listed as a step in either the AM or PM routine.
+     - NEVER use vague terms like "active serum" — always name the exact ingredient (e.g. "Retinol Serum", "Salicylic Acid (BHA) Toner", "Vitamin C Serum").
+     - Every step must have a specific ingredient type as its name.
+
+  3. WEEKLY SCHEDULE:
+     - Only reference ingredients that exist as named steps in the PM routine above.
+     - Never say "active serum" — always say "your Retinol" or "your Salicylic Acid (BHA)" etc.
+
+  ${answers.sensitiveTo ? `CRITICAL RULE: NEVER recommend any ingredient that overlaps with their sensitivities: ${answers.sensitiveTo}.` : ''}
 `;
 
   const response = await ai.models.generateContent({
