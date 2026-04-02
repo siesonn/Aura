@@ -6,7 +6,7 @@ import {
   Flower2, MessageCircle, Search, Mic,
   Printer, CalendarDays, Star, Loader2, Wand2,
   User as UserIcon, LogOut, LayoutDashboard,
-  Plus, Trash2, Camera, Check, X,
+  Plus, Trash2, Check, X,
   History, ShoppingBag, Settings, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1628,13 +1628,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-[#1E1E1E] p-8 rounded-3xl border border-[#E5E0DB] dark:border-[#333333] text-center">
-                  <Camera className="w-12 h-12 text-[#E5E0DB] mx-auto mb-4" />
-                  <h4 className="font-serif text-xl mb-2">Progress Photos</h4>
-                  <p className="text-sm text-[#8C857B] mb-6">Visual tracking is coming soon to Aura.</p>
-                  <button disabled className="w-full py-4 rounded-full border border-[#E5E0DB] text-[#8C857B] font-medium">Upload Photo</button>
-                </div>
+              <div className="grid grid-cols-1 gap-8">
                 <div className="bg-white dark:bg-[#1E1E1E] p-8 rounded-3xl border border-[#E5E0DB] dark:border-[#333333] text-center">
                   <History className="w-12 h-12 text-[#E5E0DB] mx-auto mb-4" />
                   <h4 className="font-serif text-xl mb-2">Skin Diary</h4>
