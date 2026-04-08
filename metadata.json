@@ -1,5 +1,5 @@
 {
   "name": "Aura",
   "description": "A personalized skincare routine generator and ingredient analyzer powered by AI.",
-  "requestFramePermissions": ["camera"]
+  "requestFramePermissions": []
 }
